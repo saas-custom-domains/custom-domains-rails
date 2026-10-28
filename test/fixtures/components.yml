@@ -1,0 +1,9 @@
+acme_api:
+  company: acme
+  name: API
+  status: operational
+
+globex_checkout:
+  company: globex
+  name: Checkout
+  status: degraded

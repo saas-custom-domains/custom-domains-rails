@@ -1,0 +1,26 @@
+<h1>Statuspage dashboard</h1>
+<p class="muted">Connect a custom domain to each company's status page.</p>
+
+<% @companies.each do |company| %>
+  <section class="card" data-testid="company-<%= company.slug %>">
+    <h2><%= company.name %></h2>
+
+    <ul class="domains">
+      <% company.custom_domains.each do |domain| %>
+        <li data-testid="domain-<%= domain.host %>">
+          <code><%= domain.host %></code>
+          <span class="badge <%= domain.live? ? "operational" : "degraded" %>"><%= domain_status_label(domain) %></span>
+          <%= button_to "Check DNS", check_custom_domain_path(domain), class: "link" %>
+          <%= button_to "Remove", custom_domain_path(domain), method: :delete, class: "link danger" %>
+        </li>
+      <% end %>
+    </ul>
+
+    <%= form_with model: CustomDomain.new, url: custom_domains_path, class: "row" do |f| %>
+      <%= hidden_field_tag :company_id, company.id %>
+      <%= f.text_field :host, required: true, placeholder: "status.example.com", "aria-label": "Domain" %>
+      <%= f.email_field :dns_contact_email, placeholder: "DNS contact (optional)", "aria-label": "DNS contact email" %>
+      <%= f.submit "Add domain" %>
+    <% end %>
+  </section>
+<% end %>

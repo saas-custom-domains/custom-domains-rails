@@ -1,0 +1,12 @@
+acme:
+  company: acme
+  host: status.acme.com
+  status: active
+  https_ready: true
+  provider_uuid: dom_acme
+
+globex:
+  company: globex
+  host: status.globex.com
+  status: pending
+  provider_uuid: dom_globex

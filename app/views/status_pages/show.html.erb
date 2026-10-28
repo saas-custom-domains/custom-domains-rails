@@ -1,0 +1,23 @@
+<h1><%= Current.company.name %> status</h1>
+
+<p class="summary <%= @status_data[:all_operational] ? "ok" : "warn" %>">
+  <%= @status_data[:all_operational] ? "All systems operational" : "Some systems are degraded" %>
+</p>
+
+<ul class="components">
+  <% @status_data[:components].each do |component| %>
+    <li>
+      <span><%= component.name %></span>
+      <span class="badge <%= component.status %>"><%= component.status.humanize %></span>
+    </li>
+  <% end %>
+</ul>
+
+<h2>Get updates</h2>
+<%= form_with model: @subscriber, url: subscriptions_path, class: "row" do |f| %>
+  <%= f.email_field :email, required: true, placeholder: "you@example.com", "aria-label": "Email" %>
+  <%= f.submit "Subscribe" %>
+<% end %>
+<% @subscriber.errors.full_messages.each do |message| %>
+  <p class="alert" role="alert"><%= message %></p>
+<% end %>
