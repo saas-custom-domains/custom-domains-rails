@@ -1,72 +1,7 @@
-import { expect, test, type BrowserContext } from '@playwright/test'
-import { request as httpRequest, type IncomingHttpHeaders } from 'node:http'
+import { expect, test } from '@playwright/test'
 
-const proxyPort = Number(process.env.SCD_MOCK_PROXY_PORT ?? '80')
-
-// In production a customer's domain is HTTPS, and SaaS Custom Domains
-// tells the app so with X-Forwarded-Proto: https. The mock sends the
-// same header but speaks plain HTTP, so the browser here is on
-// http://<name>.test. For form posts, send what a browser on
-// https://<name>.test would send (that Origin is what Rails' CSRF check
-// compares), and map the https:// redirect that comes back to http://.
-// The redirects the app sent are kept in `redirects`.
-const redirects: string[] = []
-
-async function postLikeHttps(context: BrowserContext) {
-  await context.route(/^http:\/\/[^/]+\.test(\/|$)/, async (route) => {
-    const req = route.request()
-    if (req.method() !== 'POST') return route.fallback()
-
-    const headers = await req.allHeaders()
-    if (headers.origin) headers.origin = headers.origin.replace(/^http:/, 'https:')
-    const res = await proxyRequest('POST', req.url(), headers, req.postDataBuffer())
-    if (res.headers.location) {
-      redirects.push(res.headers.location)
-      res.headers.location = res.headers.location.replace(/^https:/, 'http:')
-    }
-    await route.fulfill(res)
-  })
-}
-
-// A plain HTTP proxy request to the mock: "POST http://acme.test/path".
-function proxyRequest(
-  method: string,
-  url: string,
-  headers: Record<string, string>,
-  body: Buffer | null,
-): Promise<{ status: number; headers: Record<string, string>; body: Buffer }> {
-  return new Promise((resolve, reject) => {
-    const req = httpRequest(
-      { host: '127.0.0.1', port: proxyPort, method, path: url, headers },
-      (res) => {
-        const chunks: Buffer[] = []
-        res.on('data', (c) => chunks.push(c))
-        res.on('end', () =>
-          resolve({
-            status: res.statusCode!,
-            headers: flatten(res.headers),
-            body: Buffer.concat(chunks),
-          }),
-        )
-      },
-    )
-    req.on('error', reject)
-    req.end(body ?? undefined)
-  })
-}
-
-function flatten(headers: IncomingHttpHeaders) {
-  return Object.fromEntries(
-    Object.entries(headers).map(([k, v]) => [
-      k,
-      Array.isArray(v) ? v.join('\n') : String(v),
-    ]),
-  )
-}
-
+// Customer domains go through the mock proxy (see playwright.config.ts).
 const customerUrl = (host: string) => `http://${host}/`
-
-test.beforeEach(async ({ context }) => postLikeHttps(context))
 
 test('connect a domain, serve the status page through the proxy, remove it', async ({
   page,
@@ -95,7 +30,6 @@ test('connect a domain, serve the status page through the proxy, remove it', asy
   await page.getByLabel('Email').fill('reader@example.com')
   await page.getByRole('button', { name: 'Subscribe' }).click()
   await expect(page.getByRole('status')).toHaveText('Subscribed to Acme Cloud updates.')
-  expect(redirects).toContain(`https://${host}/`)
   expect(page.url()).toBe(customerUrl(host))
 
   await page.goto('/')

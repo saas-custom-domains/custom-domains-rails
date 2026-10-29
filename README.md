@@ -31,7 +31,7 @@ docker compose up --build
 
 The mock is [scd-mock](https://github.com/saas-custom-domains/scd-mock): a local copy of the SaaS Custom Domains API and proxy, so you can try everything without an account.
 
-One local quirk: the mock has no TLS, but like production it tells your app the request came over HTTPS (`X-Forwarded-Proto: https`). Your browser is on `http://acme.localhost`, so the subscribe form fails there with `HTTP Origin header (http://acme.localhost) didn't match request.base_url (https://acme.localhost)`. Try the form on http://acme.localhost:3000 instead, which skips the proxy. On a real domain the browser is on HTTPS and the form works; the end-to-end tests check exactly that.
+Try the subscribe form on that page too. In production the proxy sends `X-Forwarded-Proto: https`; the mock has no TLS, so `compose.yaml` sets `SCD_MOCK_FORWARDED_PROTO=http` to match the `http://` your browser uses, or Rails' CSRF origin check would reject the form.
 
 ### Without Docker
 
@@ -143,7 +143,7 @@ npx playwright install chromium
 npm run test:e2e               # end to end, through the mock proxy
 ```
 
-The end-to-end tests use `*.test` domains and send the browser's requests for them to the mock proxy, so nothing depends on DNS or on port 80. For form posts they send the `Origin` a browser on `https://` would send, because the mock speaks plain HTTP. To run a second stack side by side, set `APP_PORT`, `SCD_MOCK_API_PORT` and `SCD_MOCK_PROXY_PORT` for both `docker compose` and `npm run test:e2e`.
+The end-to-end tests use `*.test` domains and send the browser's requests for them to the mock proxy, so nothing depends on DNS or on port 80. To run a second stack side by side, set `APP_PORT`, `SCD_MOCK_API_PORT` and `SCD_MOCK_PROXY_PORT` for both `docker compose` and `npm run test:e2e`.
 
 CI runs both on every push and once a week, so a new Rails release that breaks something shows up here first.
 

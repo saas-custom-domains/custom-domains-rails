@@ -44,6 +44,9 @@ services:
       SCD_MOCK_WEBHOOK_TOKEN: local_webhook_token
       # Test domains under .test count as pointed at the proxy.
       SCD_MOCK_VALID_HOSTS: "*.test"
+      # Production sends https. The mock has no TLS and your browser is
+      # on http://, so say http, or Rails' CSRF origin check fails.
+      SCD_MOCK_FORWARDED_PROTO: http
 
   # Run the proxy yourself: Caddy with on-demand TLS.
   caddy:
