@@ -12,7 +12,6 @@ module ActiveSupport
     TEST_ENV = {
       "APP_HOSTS" => "app.statuspage.com,localhost",
       "APP_DOMAIN" => "statuspage.com",
-      "DOMAINS_PROVIDER" => "saascustomdomains",
       "SCD_API_URL" => "http://scd.test",
       "SCD_API_TOKEN" => "api_token",
       "SCD_ACCOUNT_UUID" => "acc_1",

@@ -1,11 +1,16 @@
 class RegisterCustomDomainJob < ApplicationJob
+  TRANSIENT_ERRORS = [
+    SaasDomains::Error, Net::OpenTimeout, Net::ReadTimeout,
+    Errno::ECONNREFUSED
+  ].freeze
+
   # Network errors and 5xx: try again later. If it never works, don't
   # keep a domain the proxy doesn't know about.
-  retry_on SaasDomains::Error, Net::OpenTimeout, Net::ReadTimeout, Errno::ECONNREFUSED,
-    wait: :polynomially_longer, attempts: 5 do |job, _error|
+  retry_on(*TRANSIENT_ERRORS,
+    wait: :polynomially_longer, attempts: 5) do |job, _error|
     job.arguments.first.destroy!
   end
-  discard_on ActiveJob::DeserializationError # removed in the meantime
+  discard_on ActiveJob::DeserializationError # removed meanwhile
 
   def perform(domain)
     res = SaasDomains.new.create_domain(

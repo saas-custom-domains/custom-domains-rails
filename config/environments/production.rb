@@ -70,8 +70,8 @@ Rails.application.configure do
     }
   ]
 
-  # Let health checks and your proxy's ask endpoint through.
+  # Load balancers call the health check by IP address.
   config.host_authorization = {
-    exclude: ->(request) { request.path.in?([ "/up", "/caddy/ask" ]) }
+    exclude: ->(request) { request.path == "/up" }
   }
 end

@@ -92,24 +92,14 @@ class CustomDomainsTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "health check, ask endpoint and webhooks answer on any host" do
+  test "the health check and webhooks answer on any host" do
     host! "10.0.0.5"
     get "/up"
     assert_response :success
 
-    get "/caddy/ask", params: { domain: "status.acme.com" }
-    assert_response :success
-  end
-
-  test "Caddy and kamal-proxy only get certificates for active domains" do
-    get "/caddy/ask", params: { domain: "Status.Acme.com" }
+    post "/webhooks/saas_domains?token=webhook_token", as: :json,
+      params: { event: "domain_created", domain: { uuid: "dom_acme" } }
     assert_response :ok
-    get "/caddy/ask", params: { host: "status.acme.com" }
-    assert_response :ok
-    get "/caddy/ask", params: { domain: "status.globex.com" }
-    assert_response :not_found
-    get "/caddy/ask", params: { domain: "random.example.com" }
-    assert_response :not_found
   end
 
   test "webhooks need the right token" do

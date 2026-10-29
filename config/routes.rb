@@ -1,9 +1,7 @@
 Rails.application.routes.draw do
-  # Reachable on any host: load balancers call /up by IP address, Caddy
-  # (or kamal-proxy) calls the ask endpoint, and webhooks may arrive on
-  # an internal hostname.
+  # Reachable on any host: load balancers call /up by IP address, and
+  # webhooks may arrive on an internal hostname.
   get "up" => "rails/health#show", as: :rails_health_check
-  get "/caddy/ask", to: "caddy#ask"
   post "/webhooks/saas_domains", to: "saas_domains_webhooks#create"
 
   # Customers' domains: their status page and nothing else.

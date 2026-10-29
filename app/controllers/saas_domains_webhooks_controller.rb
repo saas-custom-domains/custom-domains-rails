@@ -22,7 +22,8 @@ class SaasDomainsWebhooksController < ActionController::API
   def verify_webhook_token
     expected = ENV["SCD_WEBHOOK_TOKEN"].to_s
     token = params[:token].to_s
-    valid = expected.present? && ActiveSupport::SecurityUtils.secure_compare(token, expected)
+    valid = expected.present? &&
+      ActiveSupport::SecurityUtils.secure_compare(token, expected)
     head :unauthorized unless valid
   end
 end

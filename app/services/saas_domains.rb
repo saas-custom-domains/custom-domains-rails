@@ -18,8 +18,9 @@ class SaasDomains
   end
 
   def initialize
-    # SCD_API_URL is only for the local mock; leave it unset in production.
-    @base = ENV.fetch("SCD_API_URL", "https://app.saascustomdomains.com")
+    # SCD_API_URL is only for the local mock. Leave it unset in
+    # production.
+    @base = ENV["SCD_API_URL"] || "https://app.saascustomdomains.com"
     @account = ENV.fetch("SCD_ACCOUNT_UUID")
     @token = ENV.fetch("SCD_API_TOKEN")
   end
@@ -56,11 +57,12 @@ class SaasDomains
     req["Content-Type"] = "application/json"
     req.body = body.to_json if body
 
-    res = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https",
-      open_timeout: 5, read_timeout: 10) do |http|
-      http.request(req)
+    res = Net::HTTP.start(uri.host, uri.port,
+      use_ssl: uri.scheme == "https",
+      open_timeout: 5, read_timeout: 10) { |http| http.request(req) }
+    unless res.is_a?(Net::HTTPSuccess)
+      raise Error.new(res.code.to_i, res.body)
     end
-    raise Error.new(res.code.to_i, res.body) unless res.is_a?(Net::HTTPSuccess)
 
     res.body.present? ? JSON.parse(res.body) : {}
   end

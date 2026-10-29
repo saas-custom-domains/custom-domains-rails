@@ -1,6 +1,4 @@
-# docker compose up                       app + SaaS Custom Domains mock
-# DOMAINS_PROVIDER=caddy docker compose --profile diy up
-#                                         app + your own Caddy instead
+# docker compose up    app + a local mock of SaaS Custom Domains
 services:
   app:
     build: .
@@ -9,7 +7,6 @@ services:
       # "app" is how the mock (proxy and webhooks) reaches this container.
       APP_HOSTS: localhost,app
       APP_DOMAIN: statuspage.com
-      DOMAINS_PROVIDER: ${DOMAINS_PROVIDER:-saascustomdomains}
       SCD_API_URL: http://scd-mock:4010
       SCD_API_TOKEN: scd_test_token
       SCD_ACCOUNT_UUID: acc_local
@@ -48,15 +45,5 @@ services:
       # on http://, so say http, or Rails' CSRF origin check fails.
       SCD_MOCK_FORWARDED_PROTO: http
 
-  # Run the proxy yourself: Caddy with on-demand TLS.
-  caddy:
-    image: caddy:2
-    profiles: [diy]
-    ports: ["${CADDY_PORT:-443}:443"]
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy:/data
-
 volumes:
   storage:
-  caddy:

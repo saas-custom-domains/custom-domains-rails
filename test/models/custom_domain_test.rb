@@ -36,10 +36,6 @@ class CustomDomainTest < ActiveSupport::TestCase
     assert_includes domain.errors[:host], "has already been taken"
   end
 
-  test "*.localhost always points at us" do
-    assert build("acme.localhost").dns_points_to_us?
-  end
-
   test "app hosts come from APP_HOSTS" do
     assert CustomDomain.app_host?("app.statuspage.com")
     assert CustomDomain.app_host?("localhost")

@@ -17,7 +17,7 @@ class CustomDomainsController < ApplicationController
   def check
     @custom_domain.check_dns!
     redirect_to root_path
-  rescue SaasDomains::Error, Resolv::ResolvError => e
+  rescue SaasDomains::Error => e
     Rails.logger.warn(e.message)
     redirect_to root_path, alert: "Could not check #{@custom_domain.host}. Try again."
   end

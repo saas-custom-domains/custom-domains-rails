@@ -59,7 +59,8 @@ Rails.application.configure do
   config.action_controller.raise_on_missing_callback_actions = true
 
   # Development allows localhost, *.localhost, *.test and IP addresses.
-  # Allow the customer domains in your database too.
+  # Allow APP_HOSTS and the customer domains in your database too.
+  config.hosts += ENV.fetch("APP_HOSTS", "").split(",").map(&:strip)
   config.hosts << ->(host) {
     CustomDomain.exists?(host: host.split(":").first.downcase)
   }

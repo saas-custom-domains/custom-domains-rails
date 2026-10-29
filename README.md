@@ -2,7 +2,7 @@
 
 An example Rails 8.1 app where each customer connects their own domain. It's a small status page product: every company gets a status page, and it can serve that page on `status.theircompany.com` instead of a URL on your domain.
 
-It goes with the guide [How to Add Custom Domains to a Ruby on Rails App](https://saascustomdomains.com/blog/posts/custom-domains-ruby-on-rails).
+It goes with the guide [How to Add Custom Domains to a Ruby on Rails App](https://saascustomdomains.com/blog/posts/best-guide-custom-domains-ruby-on-rails).
 
 What's in it:
 
@@ -11,7 +11,7 @@ What's in it:
 - A subscribe form on each status page that passes Rails' CSRF check behind the proxy (see [Forms, redirects and links behind the proxy](#forms-redirects-and-links-behind-the-proxy)).
 - `config.hosts` allows your own hostnames and every domain in the database, so `HostAuthorization` stays on.
 - A dashboard to add a domain, check its DNS and remove it. Background jobs (Solid Queue) talk to the API, and webhooks update the status.
-- Two ways to run HTTPS: SaaS Custom Domains (default), or your own Caddy with on-demand TLS.
+- HTTPS for every customer domain through SaaS Custom Domains, with a local mock of its API and proxy for development and tests.
 
 ## Run it in 2 minutes
 
@@ -33,16 +33,25 @@ The mock is [scd-mock](https://github.com/saas-custom-domains/scd-mock): a local
 
 Try the subscribe form on that page too. In production the proxy sends `X-Forwarded-Proto: https`; the mock has no TLS, so `compose.yaml` sets `SCD_MOCK_FORWARDED_PROTO=http` to match the `http://` your browser uses, or Rails' CSRF origin check would reject the form.
 
-### Without Docker
+### Run Rails outside Docker
+
+Run the mock in Docker and Rails on your machine:
 
 ```bash
+docker run --rm -p 4010:4010 -p 80:4080 \
+  -e SCD_MOCK_UPSTREAM_HOST=host.docker.internal \
+  -e SCD_MOCK_UPSTREAM_PORT=3000 \
+  -e SCD_MOCK_WEBHOOK_URL=http://host.docker.internal:3000/webhooks/saas_domains \
+  -e SCD_MOCK_FORWARDED_PROTO=http \
+  ghcr.io/saas-custom-domains/scd-mock:latest
+
 bundle install
 cp .env.example .env
 bin/rails db:prepare
 bin/rails server
 ```
 
-Add a domain such as `acme.localhost` and open http://acme.localhost:3000. Without the mock, set `DOMAINS_PROVIDER=caddy` in `.env` so adding a domain doesn't call the API; `*.localhost` domains count as pointed at you after you click **Check DNS**.
+The mock reaches your machine as `host.docker.internal`, which is why `.env.example` lists it in `APP_HOSTS`; without it, Rails answers with "Blocked hosts: host.docker.internal:3000". Keep the proxy on port 80: `X-Served-For` carries no port, so a form on `http://acme.localhost:4080` would fail the CSRF origin check.
 
 ## How it works
 
@@ -63,7 +72,6 @@ Browser ── acme.com ──▶ SaaS Custom Domains ──▶ your Rails app
 | `app/services/saas_domains.rb` | API client for SaaS Custom Domains (`Net::HTTP`) |
 | `app/jobs/register_custom_domain_job.rb`, `remove_custom_domain_job.rb` | Add and remove domains on the proxy |
 | `app/controllers/saas_domains_webhooks_controller.rb` | Webhook endpoint |
-| `app/controllers/caddy_controller.rb` | On-demand TLS check for Caddy and kamal-proxy |
 | `config/environments/production.rb` | `config.hosts` and `host_authorization` |
 
 ## Rails errors you'll see, and the fixes
@@ -90,11 +98,11 @@ config.hosts = [
   ->(host) { CustomDomain.exists?(host: host.split(":").first.downcase) }
 ]
 config.host_authorization = {
-  exclude: ->(request) { request.path.in?([ "/up", "/caddy/ask" ]) }
+  exclude: ->(request) { request.path == "/up" }
 }
 ```
 
-`/up` is excluded because load balancers call it by IP address, and `/caddy/ask` because kamal-proxy calls its ask URL with the customer's domain in `Host`. List every internal hostname your platform uses to reach the app in `APP_HOSTS` too: webhooks from the mock arrive as `Host: app:3000`.
+`/up` is excluded because load balancers call it by IP address. Behind SaaS Custom Domains, `Host` and `X-Forwarded-Host` are your own hostname, so `APP_HOSTS` covers proxied requests; the lambda is for local testing on `*.localhost` and for the case where support sends the customer's domain in `X-Forwarded-Host`. List every internal hostname your platform uses to reach the app in `APP_HOSTS` too: webhooks from the mock arrive as `Host: app:3000`.
 
 ### Forms, redirects and links behind the proxy
 
@@ -107,22 +115,6 @@ SaaS Custom Domains forwards requests with your app's own hostname in `Host` and
 `SaasDomainsProxy`, a small Rack middleware, checks the auth token and then sets `X-Forwarded-Host` to the value of `X-Served-For`. Rails reads `X-Forwarded-Host` first, so `request.host` is the customer's domain from there on. It runs after `HostAuthorization`, which therefore only sees your own hostnames on proxied requests. (Support can also put the customer's domain in `X-Forwarded-Host` for your account; the middleware works either way.)
 
 Leave the session cookie's `domain` unset. The default is a host-only cookie, which is what you want on a domain you don't own: with `domain: :all`, Rails would set it for the customer's whole domain (`domain=acme.com`).
-
-## Run your own proxy instead (Caddy)
-
-```bash
-DOMAINS_PROVIDER=caddy docker compose --profile diy up --build
-```
-
-Add `acme.localhost` in the dashboard, click **Check DNS**, then:
-
-```bash
-curl -k https://acme.localhost/
-```
-
-Caddy asks `/caddy/ask` before issuing a certificate, and only active domains get one. Caddy keeps the customer's domain in `Host`, so the `config.hosts` lambda is what lets these requests in. Locally it uses Caddy's internal CA, hence `-k`. In production you'd remove `internal` from the `Caddyfile`, run it on a server with a static IP, and then own certificate storage, renewals, rate limits and monitoring yourself.
-
-kamal-proxy has on-demand TLS since v0.10.0 (`--tls-on-demand-url`, sending `?host=`), and `CaddyController#ask` accepts that too. Kamal's `deploy.yml` has no option for it yet.
 
 ## Use it with your SaaS Custom Domains account
 

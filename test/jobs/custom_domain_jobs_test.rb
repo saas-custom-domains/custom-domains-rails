@@ -80,14 +80,4 @@ class CustomDomainJobsTest < ActiveJob::TestCase
     domain.check_dns!
     assert domain.reload.pending?
   end
-
-  test "with your own proxy, Check DNS looks at DNS" do
-    ENV["DOMAINS_PROVIDER"] = "caddy"
-    domain = companies(:acme).custom_domains.create!(host: "acme.localhost")
-    assert_no_enqueued_jobs only: RegisterCustomDomainJob do
-      domain.check_dns!
-    end
-    assert domain.reload.active?
-    assert domain.live?
-  end
 end
